@@ -1,0 +1,52 @@
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${WORDPRESS_DB_NAME:-wordpress}
+      MARIADB_USER: ${WORDPRESS_DB_USER:-wordpress}
+      MARIADB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+    volumes:
+      - medstudy-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  wordpress:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME:-wordpress}
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_SITE_URL: ${WORDPRESS_SITE_URL:-https://medstudy.rainomotion.com}
+      WORDPRESS_SITE_TITLE: ${WORDPRESS_SITE_TITLE:-MedStudy Gear}
+      WORDPRESS_ADMIN_USER: ${WORDPRESS_ADMIN_USER:-raino_admin}
+      WORDPRESS_ADMIN_PASSWORD: ${WORDPRESS_ADMIN_PASSWORD}
+      WORDPRESS_ADMIN_EMAIL: ${WORDPRESS_ADMIN_EMAIL:-rainomotion@gmail.com}
+      WOOCOMMERCE_STORE_ADDRESS: ${WOOCOMMERCE_STORE_ADDRESS:-Edmonton, AB}
+      WOOCOMMERCE_STORE_COUNTRY: ${WOOCOMMERCE_STORE_COUNTRY:-CA:AB}
+      WOOCOMMERCE_CURRENCY: ${WOOCOMMERCE_CURRENCY:-CAD}
+    volumes:
+      - medstudy-wp:/var/www/html
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/wp-login.php >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+volumes:
+  medstudy-db:
+  medstudy-wp:
